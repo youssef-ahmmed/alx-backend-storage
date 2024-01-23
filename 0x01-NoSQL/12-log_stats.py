@@ -8,7 +8,7 @@ if __name__ == '__main__':
     db: database = client.logs
     nginx: collection = db.nginx
 
-    print(f'{nginx.estimated_document_count()} logs')
+    print(f'{nginx.count_documents({})} logs')
 
     print('Methods:')
     print(f'\tmethod GET: {nginx.count_documents({ "method": "GET" })}')
