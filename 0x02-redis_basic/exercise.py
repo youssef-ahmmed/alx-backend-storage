@@ -12,11 +12,28 @@ def count_calls(method: Callable) -> Callable:
 
     @wraps(method)
     def wrapper(self, *args: Tuple, **kwargs: Dict) -> Callable:
-        """Wrapper function for the decorator method"""
+        """Wrapper function for the decorator function"""
         if isinstance(self._redis, redis.Redis):
             self._redis.incr(method.__qualname__)
 
-        return method(self, args, kwargs)
+        return method(self, *args, **kwargs)
+
+    return wrapper
+
+
+def call_history(method: Callable) -> Callable:
+    """Decorator to store the history of inputs and outputs for a particular function"""
+
+    @wraps(method)
+    def wrapper(self, *args: Tuple, **kwargs: Dict):
+        """Wrapper function for the decorator function"""
+        keys = method(self, *args, **kwargs)
+
+        if isinstance(self._redis, redis.Redis):
+            self._redis.rpush(f'{method.__qualname__}:inputs', str(args))
+            self._redis.rpush(f'{method.__qualname__}:outputs', keys)
+
+        return keys
 
     return wrapper
 
@@ -30,6 +47,7 @@ class Cache:
         self._redis.flushdb()
 
     @count_calls
+    @call_history
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """Store the given data with random key"""
         key: str = str(uuid.uuid4())
