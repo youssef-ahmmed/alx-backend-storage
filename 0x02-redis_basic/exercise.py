@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Connecting Redis with python"""
 import uuid
-from typing import Union, Callable, Optional
 from functools import wraps
+from typing import Union, Callable, Optional, Tuple, Dict
 
 import redis
 
@@ -11,7 +11,7 @@ def count_calls(method: Callable) -> Callable:
     """Decorator to count the number of times a method is called"""
 
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args: Tuple, **kwargs: Dict) -> Callable:
         """Wrapper function for the decorator method"""
         if isinstance(self._redis, redis.Redis):
             self._redis.incr(method.__qualname__)
@@ -37,7 +37,7 @@ class Cache:
         return key
 
     def get(self, key: str, fn: Optional[Callable] = None) -> str:
-        """"""
+        """Get the value of specific key"""
         value = self._redis.get(key)
 
         if fn:
