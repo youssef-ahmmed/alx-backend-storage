@@ -2,17 +2,34 @@
 """Connecting Redis with python"""
 import uuid
 from typing import Union, Callable, Optional
+from functools import wraps
 
 import redis
 
 
+def count_calls(method: Callable) -> Callable:
+    """Decorator to count the number of times a method is called"""
+
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """Wrapper function for the decorator method"""
+        if isinstance(self._redis, redis.Redis):
+            self._redis.incr(method.__qualname__)
+
+        return method(self, args, kwargs)
+
+    return wrapper
+
+
 class Cache:
     """Cache class for connecting to redis"""
+
     def __init__(self) -> None:
         """Init the redis connection"""
         self._redis = redis.Redis()
         self._redis.flushdb()
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """Store the given data with random key"""
         key: str = str(uuid.uuid4())
