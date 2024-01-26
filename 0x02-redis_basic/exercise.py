@@ -13,29 +13,47 @@ def count_calls(method: Callable) -> Callable:
     @wraps(method)
     def wrapper(self, *args: Tuple, **kwargs: Dict) -> Callable:
         """Wrapper function for the decorator function"""
-        if isinstance(self._redis, redis.Redis):
-            self._redis.incr(method.__qualname__)
-
+        self._redis.incr(method.__qualname__)
         return method(self, *args, **kwargs)
 
     return wrapper
 
 
 def call_history(method: Callable) -> Callable:
-    """Decorator to store the history of inputs and outputs for a particular function"""
+    """Decorator to store the history of inputs and outputs for a
+        particular function"""
 
     @wraps(method)
     def wrapper(self, *args: Tuple, **kwargs: Dict):
         """Wrapper function for the decorator function"""
         keys = method(self, *args, **kwargs)
 
-        if isinstance(self._redis, redis.Redis):
-            self._redis.rpush(f'{method.__qualname__}:inputs', str(args))
-            self._redis.rpush(f'{method.__qualname__}:outputs', keys)
+        self._redis.rpush(f'{method.__qualname__}:inputs', str(args))
+        self._redis.rpush(f'{method.__qualname__}:outputs', keys)
 
         return keys
 
     return wrapper
+
+
+def replay(fn: Callable) -> None:
+    """function to display the history of calls of a particular function"""
+    client = redis.Redis()
+
+    method_name = fn.__qualname__
+    input_list_name = method_name + ":inputs"
+    output_list_name = method_name + ":outputs"
+
+    calls_count = client.get(method_name).decode('utf-8')
+
+    inputs = [input.decode('utf-8') for input in
+              client.lrange(input_list_name, 0, -1)]
+    outputs = [output.decode('utf-8') for output in
+               client.lrange(output_list_name, 0, -1)]
+
+    print(f'{method_name} was called {calls_count} times:')
+    for input, output in zip(inputs, outputs):
+        print(f'{method_name}(*{input}) -> {output}')
 
 
 class Cache:
@@ -68,4 +86,4 @@ class Cache:
 
     def get_int(self, key: str) -> int:
         """Get the value of a key and convert it to integer"""
-        return self.get(key, int)
+        return int(key)
